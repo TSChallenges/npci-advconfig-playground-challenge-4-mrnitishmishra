@@ -1,0 +1,166 @@
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl apply -f cassandra.yaml
+statefulset.apps/cassandra created
+service/cassandra created
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl get pods
+NAME          READY   STATUS              RESTARTS   AGE
+cassandra-0   0/1     ContainerCreating   0          14s
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl get pods
+NAME          READY   STATUS    RESTARTS   AGE
+cassandra-0   1/1     Running   0          23s
+cassandra-1   1/1     Running   0          8s
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl get pods -l app=cassandra
+NAME          READY   STATUS    RESTARTS   AGE
+cassandra-0   1/1     Running   0          51s
+cassandra-1   1/1     Running   0          36s
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl exec -it cassandra-0 -- nodestool status
+error: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "0eef68929358ddf795e15bc39f898eed1f29b6a895052f38cdce3d70126cf7bf": OCI runtime exec failed: exec failed: container_linux.go:380: starting container process caused: exec: "nodestool": executable file not found in $PATH: unknown
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl exec -it cassandra-0 --nodestool status
+error: unknown flag: --nodestool
+See 'kubectl exec --help' for usage.
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl exec -it cassandra-0 sh
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+# nodetool status
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address    Load        Tokens  Owns (effective)  Host ID                               Rack
+UN  10.42.0.5  119.82 KiB  16      100.0%            f083317b-211c-4f47-bd5b-060415312592  rack1
+UN  10.42.0.6  119.73 KiB  16      100.0%            44644621-4e41-498d-af59-dc1288bb2dce  rack1
+
+# nodetool info
+ID                     : f083317b-211c-4f47-bd5b-060415312592
+Gossip active          : true
+Native Transport active: true
+Load                   : 119.82 KiB
+Uncompressed load      : 157.11 KiB
+Generation No          : 1740218111
+Uptime (seconds)       : 200
+Heap Memory (MB)       : 217.59 / 4000.00
+Off Heap Memory (MB)   : 0.00
+Data Center            : datacenter1
+Rack                   : rack1
+Exceptions             : 0
+Key Cache              : entries 9, size 728 bytes, capacity 100 MiB, 78 hits, 86 requests, 0.907 recent hit rate, 14400 save period in seconds
+Row Cache              : entries 0, size 0 bytes, capacity 0 bytes, 0 hits, 0 requests, NaN recent hit rate, 0 save period in seconds
+Counter Cache          : entries 0, size 0 bytes, capacity 50 MiB, 0 hits, 0 requests, NaN recent hit rate, 7200 save period in seconds
+Network Cache          : size 8 MiB, overflow size: 0 bytes, capacity 128 MiB
+Percent Repaired       : 100.0%
+Token                  : (invoke with -T/--tokens to see all 16 tokens)
+Bootstrap state        : COMPLETED
+Bootstrap failed       : false
+Decommissioning        : false
+Decommission failed    : false
+# exit
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl exec -it cassandra-0 cqlsh
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+Connected to TestCluster at 127.0.0.1:9042
+[cqlsh 6.2.0 | Cassandra 5.0.3 | CQL spec 3.4.7 | Native protocol v5]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE user_data
+   ...    ... WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};
+SyntaxException: line 2:3 mismatched input '..' expecting K_WITH (CREATE KEYSPACE user_data    [..]...)
+cqlsh> USE user_data;
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Keyspace 'user_data' does not exist"
+cqlsh> CREATE KEYSPACE user_data     ... WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};
+SyntaxException: line 1:30 mismatched input '..' expecting K_WITH (CREATE KEYSPACE user_data     [..]...)
+cqlsh> DESCRIBE KEYSPACE
+No keyspace specified and no current keyspace
+cqlsh> DESCRIBE KEYSPACE;
+No keyspace specified and no current keyspace
+cqlsh> CREATE KEYSPACE user_data  WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};
+cqlsh> DESCRIBE KEYSPACE;
+No keyspace specified and no current keyspace
+cqlsh> SHOW KEYSPACE;
+Improper SHOW command.
+cqlsh> CREATE KEYSPACE user_data WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};
+AlreadyExists: Keyspace 'user_data' already exists
+cqlsh> DESCRIBE KEYSPACES;
+
+system       system_distributed  system_traces  system_virtual_schema
+system_auth  system_schema       system_views   user_data
+
+cqlsh> CREATE TABLE users (
+   ...              ...     id UUID PRIMARY KEY,
+   ...              ...     name TEXT,
+   ...              ...     email TEXT
+   ...
+cqlsh> CREATE TABLE users ( id UUID PRIMARY KEY, name TEXT, email TEXT);
+InvalidRequest: Error from server: code=2200 [Invalid query] message="No keyspace has been specified. USE a keyspace, or explicitly specify keyspace.tablename"
+cqlsh> USE user_data
+   ... ;
+cqlsh:user_data> CREATE TABLE users ( id UUID PRIMARY KEY, name TEXT, email TEXT);
+cqlsh:user_data> INSERT INTO users (id, name, email) VALUES (uuid(), 'Alice', 'alice@example.com');
+cqlsh:user_data> INSERT INTO users (id, name, email) VALUES (uuid(), 'Terence', 'terence@example.com');
+cqlsh:user_data> NSERT INTO users (id, name, email) VALUES (uuid(), 'Mike', 'mike@example.com');
+SyntaxException: line 1:0 no viable alternative at input 'NSERT' ([NSERT]...)
+cqlsh:user_data> INSERT INTO users (id, name, email) VALUES (uuid(), 'Mike', 'mike@example.com');
+cqlsh:user_data> SELECT * FROM users;
+
+ id                                   | email               | name
+--------------------------------------+---------------------+---------
+ a67a5c55-1467-43bf-aa9f-0ed9229d195a |    mike@example.com |    Mike
+ 18d546a6-02f7-42cc-9615-4123b6e8ec79 |   alice@example.com |   Alice
+ 865cd243-3384-4bc0-a7f7-b8370cf40e0c | terence@example.com | Terence
+
+(3 rows)
+cqlsh:user_data> exit
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl exec -it cassandra-1 -- cqlsh -e "SELECT * FROM user_data.users;"
+
+ id                                   | email               | name
+--------------------------------------+---------------------+---------
+ a67a5c55-1467-43bf-aa9f-0ed9229d195a |    mike@example.com |    Mike
+ 18d546a6-02f7-42cc-9615-4123b6e8ec79 |   alice@example.com |   Alice
+ 865cd243-3384-4bc0-a7f7-b8370cf40e0c | terence@example.com | Terence
+
+(3 rows)
+@mrnitishmishra ➜ /workspaces/npci-advconfig-playground-challenge-4-mrnitishmishra (main) $ kubectl exec -it cassandra-1 -- cqlsh
+Connected to TestCluster at 127.0.0.1:9042
+[cqlsh 6.2.0 | Cassandra 5.0.3 | CQL spec 3.4.7 | Native protocol v5]
+Use HELP for help.
+cqlsh> DESCRIBE TABLE user_data.users;
+
+CREATE TABLE user_data.users (
+    id uuid PRIMARY KEY,
+    email text,
+    name text
+) WITH additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';
+cqlsh> ALTER TABLE user_data.users WITH caching = { 'keys': 'ALL', 'rows_per_partition': '10' };
+cqlsh> CREATE INDEX ON user_data.users(email);
+cqlsh> BEGIN BATCH INSERT INTO user_data.users (id, name, email) VALUES (uuid(), 'Priya', 'priya@example.com');
+   ... ;
+   ...
+cqlsh> BEGIN BATCH
+   ...    INSERT INTO user_data.users (id, name, email) VALUES (uuid(), 'Priya', 'priya@example.com');
+   ...    INSERT INTO user_data.users (id, name, email) VALUES (uuid(), 'Shahid', 'shahid@example.com');
+   ... APPLY BATCH;
+cqlsh> SELECT * FROM user_data.users;
+
+ id                                   | email               | name
+--------------------------------------+---------------------+---------
+ a67a5c55-1467-43bf-aa9f-0ed9229d195a |    mike@example.com |    Mike
+ 18d546a6-02f7-42cc-9615-4123b6e8ec79 |   alice@example.com |   Alice
+ 865cd243-3384-4bc0-a7f7-b8370cf40e0c | terence@example.com | Terence
+ 5c029630-2295-4476-8765-7db9c56dabec |   priya@example.com |   Priya
+ 3965a80a-6484-40d1-8675-dbeef2ded229 |  shahid@example.com |  Shahid
+
+(5 rows)
+cqlsh> 
